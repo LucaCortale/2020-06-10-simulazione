@@ -88,81 +88,21 @@ public class ImdbDAO {
 		}
 	}
 	
-	public List <Genere> getGeneri(Map<Integer,Movie> idMapMovie){
-		
-		String sql = "SELECT md.movie_id,md.genre "
-				+ "FROM movies_genres md";
-		List<Genere> result = new ArrayList<>();
-		Connection conn = DBConnect.getConnection();
-		
-		try {
-			PreparedStatement st = conn.prepareStatement(sql);
-			ResultSet res = st.executeQuery();
-			while(res.next()) {
-				
-				Movie movie = idMapMovie.get(res.getInt("md.movie_id"));
-				String s = res.getString("md.genre");
-				Genere genere = new Genere(movie,s);
-				result.add(genere);
-				
-			}
-			
-			conn.close();
-			return result;
-			
-		}catch(SQLException e ) {
-			e.printStackTrace();
-			return null;
-		}
-		
-	}
-	
-	public List <String> getGeneriBOX(){
-		
-		String sql = "SELECT DISTINCT(md.genre) "
-				+ "FROM movies_genres md";
-		List<String> result = new ArrayList<>();
-		Connection conn = DBConnect.getConnection();
-		
-		try {
-			PreparedStatement st = conn.prepareStatement(sql);
-			ResultSet res = st.executeQuery();
-			while(res.next()) {
-				
-				
-				String s = res.getString("md.genre");
-				
-				result.add(s);
-				
-			}
-			
-			conn.close();
-			return result;
-			
-		}catch(SQLException e ) {
-			e.printStackTrace();
-			return null;
-		}
-		
-	}
-	
-	public List<Actor> listAllActorsGenre(String genere,Map <Integer,Actor> idMapAct){
-		
-		String sql = "SELECT DISTINCT(r.actor_id) "
-				+ "FROM movies_genres md,roles r "
-				+ "WHERE r.movie_id = md.movie_id AND md.genre = ? ";
-		List<Actor> result = new ArrayList<Actor>();
+	public List<String> listAllGenere(){
+		String sql = "SELECT DISTINCT dg.genre "
+				+ "FROM directors_genres dg "
+				+ "ORDER BY dg.genre";
+		List<String> result = new ArrayList<String>();
 		Connection conn = DBConnect.getConnection();
 
 		try {
 			PreparedStatement st = conn.prepareStatement(sql);
-			st.setString(1, genere);
 			ResultSet res = st.executeQuery();
 			while (res.next()) {
 
-				Actor actor = idMapAct.get(res.getInt("r.actor_id"));
+				String genere = res.getString("dg.genre");
 				
-				result.add(actor);
+				result.add(genere);
 			}
 			conn.close();
 			return result;
@@ -173,26 +113,30 @@ public class ImdbDAO {
 		}
 	}
 	
-	public List<Adiacenza> listAdiacenze(String genere,Map <Integer,Actor> idMapAct){
-		
-		String sql = "SELECT r1.actor_id,r2.actor_id, COUNT(*) AS peso "
-				+ "FROM roles r1,roles r2,movies_genres md "
-				+ "WHERE r1.actor_id > r2.actor_id AND  md.movie_id = r1.movie_id AND "
-				+ "r2.movie_id = md.movie_id AND md.genre = ?"
-				+ "GROUP BY r1.actor_id,r2.actor_id ";
-		
+	public List<Adiacenza> listAdiacenze(String genere,Map<Integer,Actor>mappaActor){
+		String sql = "SELECT t1.actor_id,t2.actor_id, COUNT(t1.actor_id+t2.actor_id) AS peso "
+				+ "FROM (SELECT r.actor_id,mg.movie_id "
+				+ "		FROM roles r,movies_genres mg "
+				+ "		WHERE r.movie_id = mg.movie_id AND mg.genre = ?) AS t1, "
+				+ "		(SELECT r.actor_id,mg.movie_id "
+				+ "		FROM roles r,movies_genres mg "
+				+ "		WHERE r.movie_id = mg.movie_id AND mg.genre = ?) AS t2 "
+				+ "WHERE t1.actor_id > t2.actor_id AND t1.movie_id = t2.movie_id "
+				+ "GROUP BY t1.actor_id,t2.actor_id";
 		List<Adiacenza> result = new ArrayList<Adiacenza>();
 		Connection conn = DBConnect.getConnection();
 
 		try {
 			PreparedStatement st = conn.prepareStatement(sql);
 			st.setString(1, genere);
+			st.setString(2, genere);
 			ResultSet res = st.executeQuery();
 			while (res.next()) {
 
-				Actor a1 = idMapAct.get(res.getInt("r1.actor_id"));
-				Actor a2 = idMapAct.get(res.getInt("r2.actor_id"));	
-				int peso = res.getInt("peso");
+				Actor a1 = mappaActor.get(res.getInt("t1.actor_id")) ;
+				Actor a2 = mappaActor.get(res.getInt("t2.actor_id")) ;
+				double peso = res.getDouble("peso");
+				
 				result.add(new Adiacenza(a1,a2,peso));
 			}
 			conn.close();
@@ -203,8 +147,5 @@ public class ImdbDAO {
 			return null;
 		}
 	}
-	
-	
-	
 	
 }

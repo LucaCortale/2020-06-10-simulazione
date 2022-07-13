@@ -3,103 +3,178 @@ package it.polito.tdp.imdb.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.Random;
 
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.DefaultWeightedEdge;
 
+import it.polito.tdp.imdb.model.Event.EventType;
+
 public class Simulatore {
 	
-	//coda degli eventi
-	//private PriorityQueue<Event> queue;
+	//input
+	private int N;
 	
-	//Parametri SIMULAZIONE
-	private int giorni;
-	List<Actor>list;
-	boolean flag=false;
 	//output
-	private int pause=0;
-	private List <Actor> listaAttori = new ArrayList<>();
+	int nPause;
+	List<Actor> intervistati;
 	
-	//stato iniziale
-	private Graph <Actor,DefaultWeightedEdge> grafo;
+	//coda
+	private PriorityQueue<Event> queue;
 	
-	public Simulatore(Graph <Actor,DefaultWeightedEdge> grafo,int giorni) {
-	this.grafo= grafo;	
-	this.giorni = giorni;
+	//mondo
+	
+	private Graph<Actor, DefaultWeightedEdge> grafo;
+	private List<Actor> listActor;
+	int stessoGenere=0;
+	boolean giornoDpoPausa=false;
+	
+	public Simulatore(Graph <Actor,DefaultWeightedEdge>grafo,int N,List<Actor> listActor){
+		this.grafo = grafo;
+		this.N=N;
+		this.listActor=listActor;
+		intervistati = new ArrayList<>();
 	}
-	
+
 	public void init() {
 		
+		this.queue= new PriorityQueue<>();
 		
-		list = new ArrayList<>();
-		
-		for(Actor a : this.grafo.vertexSet()) {
-			list.add(a);
-		}
-		
+		Event e = new Event(0,EventType.NUOVA_INTERVISTA);
+		this.queue.add(e);
 	}
 	
+	public void run() {
+		while(!this.queue.isEmpty()) {
+			Event e = this.queue.poll();
+			
+			this.processEvent(e);
+		}
+	}
 	
-	public void processEvent( ) {
+	private void processEvent(Event e) {
+		Actor intervistato;
+		if(e.getTime()<this.N) {
 		
-		
-		for(int i=1;i<=this.giorni;i++){
+			switch(e.getType()) {
 			
-		if(i>2 && listaAttori.get(listaAttori.size()-1).gender.compareTo(listaAttori.get(listaAttori.size()-1).gender)==0 && flag ==false) {
-			if(Math.random() <= 0.90) {
-				i++;
-				this.pause++;
-				flag = true;
-				continue;
-			}
-		}
-			
-		if(i ==1 || flag == true) {
-			//scelgo a caso il primo
-			int n = (int) (Math.random()*(this.list.size()-1)+1);
-			Actor a = this.list.get(n);
-			listaAttori.add(a);
-			System.out.println(a);
-			flag = false;
-			continue;
-		}
-		
-		if(Math.random() <= 0.60) {
-			
-			int n = (int) (Math.random()*(this.list.size()-1)+1);
-			Actor a = this.list.get(n);
-			if(!listaAttori.contains(a)) { listaAttori.add(a);System.out.println(a);}
-			
-		}else {
-			int max =0;
-			Actor act = new Actor() ;
-			for(Actor aa : Graphs.neighborListOf(this.grafo, listaAttori.get(listaAttori.size()-1))) {
-				
-				if(aa != null) {
+			case NUOVA_INTERVISTA:
+				//per primo giorno
+				if(e.getTime()==0) {
+					intervistato = this.actorCasuale();
+					intervistati.add(intervistato);
+					listActor.remove(intervistato);
+					Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+					this.queue.add(event);
+					this.stessoGenere++;
+					break;
+				}else {
 					
-					if(this.grafo.degreeOf(aa) >  max) {
-						max = this.grafo.degreeOf(aa);
-						act = aa;
+				//per gli altri
+					if(Math.random()<0.60) {
+						
+						if(this.stessoGenere>=2) {
+							if(Math.random()<0.90) {
+								Event event = new Event(e.getTime()+1,EventType.PAUSA);
+								this.queue.add(event);
+								stessoGenere=0;
+								giornoDpoPausa=true;
+								break;
+							}else {
+								intervistato = this.actorCasuale();
+								this.incrementoGenere(intervistato);
+								intervistati.add(intervistato);
+								listActor.remove(intervistato);
+								Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+								this.queue.add(event);
+								break;
+							}
 						}
-					}else continue;
+						
+						intervistato = this.actorCasuale();
+						this.incrementoGenere(intervistato);
+						intervistati.add(intervistato);
+						listActor.remove(intervistato);
+						Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+						this.queue.add(event);
+						break;
+						
+					}else {
+						
 					
-				if(!listaAttori.contains(act)) { listaAttori.add(act); System.out.println(act);	}
+						if(this.stessoGenere>=2) {
+							if(Math.random()<0.90) {
+								Event event = new Event(e.getTime()+1,EventType.PAUSA);
+								this.queue.add(event);
+								stessoGenere=0;
+								giornoDpoPausa=true;
+								break;
+							}else {
+								intervistato = this.actorGradoMAssimo(this.intervistati.get(this.intervistati.size()-1));
+								this.incrementoGenere(intervistato);
+								intervistati.add(intervistato);
+								listActor.remove(intervistato);
+								Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+								this.queue.add(event);
+								break;
+								}
+							}
+								
+						if(giornoDpoPausa == true) {
+							intervistato = this.actorCasuale();
+						}else {
+						intervistato = this.actorGradoMAssimo(this.intervistati.get(this.intervistati.size()-1));
+						}
+						this.incrementoGenere(intervistato);
+						intervistati.add(intervistato);
+						listActor.remove(intervistato);
+						Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+						this.queue.add(event);
+						break;
+							}
+					
 				}
+					
+					
+				
+				
+				
+			case PAUSA:
+				Event event = new Event(e.getTime()+1,EventType.NUOVA_INTERVISTA);
+				this.queue.add(event);
+				this.giornoDpoPausa=true;
+				this.nPause++;
+				break;
+				
 			}
+			
+		}
 		
-		}
-
 	}
 	
-	public String getRis() {
-		String s ="";
-		for(Actor a : listaAttori) {
-			s += a +"\n";
+	public Actor actorGradoMAssimo(Actor ActorGGprecedente){
+		Actor gradoMax=null;
+		int grado =0;
+		for(Actor a : Graphs.neighborListOf(this.grafo, ActorGGprecedente)) {
+			if(this.grafo.degreeOf(a)>grado) {
+				gradoMax = a;
+				grado = this.grafo.degreeOf(a);
+			}
 		}
-		s += "Prendendo : "+this.pause+" pause";
-		return s;
+		
+		return gradoMax;
 	}
 	
+	public void incrementoGenere(Actor a) {
+		if(a.getGender().equals(intervistati.get(intervistati.size()-1).getGender()) ) {
+			this.stessoGenere++;
+		}
+	}
+	
+	public Actor actorCasuale(){
+		
+	
+		int n = (int)(Math.random()*this.listActor.size());
+		return listActor.get(n);
+	}
 }

@@ -11,6 +11,7 @@ public class Genere {
 		this.genere = genere;
 	}
 	
+	
 	public Movie getMovie() {
 		return movie;
 	}

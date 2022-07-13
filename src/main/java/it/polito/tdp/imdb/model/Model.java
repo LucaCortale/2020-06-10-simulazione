@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleWeightedGraph;
 
@@ -15,92 +16,82 @@ import it.polito.tdp.imdb.db.ImdbDAO;
 
 public class Model {
 	
-	Graph <Actor,DefaultWeightedEdge> grafo;
 	ImdbDAO dao;
-	Map <Integer,Movie> idMapMovie;
-	Map <Integer,Actor> idMapActor;
+	Map<Integer,Actor> mappaActor;
+	Graph<Actor, DefaultWeightedEdge> grafo;
+	
+	//risultati simulazione
+	public int nPause;
+	public List<Actor> intervistati;
 	
 	public Model() {
 		
-		idMapMovie = new HashMap<>();
-		idMapActor = new HashMap<>();
 		dao = new ImdbDAO();
-	}
-	
-	public List<String> getGeneriBOX(){
-		List<String> lista = dao.getGeneriBOX();
-		Collections.sort(lista);
 		
-		return lista;
 	}
 	
 	
-	
-	public void creaGrafo(String genere){
+	public void creaGrafo(String genere) {
 		
 		this.grafo = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
 		
-		Graphs.addAllVertices(this.grafo, dao.listAllActorsGenre(genere, idMapActor));
-		
-		for(Adiacenza a : dao.listAdiacenze(genere,idMapActor)) {
+		for(Adiacenza a : this.dao.listAdiacenze(genere, mappaActor)) {
 			Graphs.addEdgeWithVertices(this.grafo, a.getA1(), a.getA2(),a.getPeso());
 		}
 		
 	}
 	
-	public List<Actor> attoriSimili(Actor actor) {
-		List <Actor> attori = new ArrayList<>();
+	public void simula(int n) {
 		
-		for(Actor a : Graphs.neighborListOf(this.grafo, actor)) {
-			for(Actor aa : Graphs.neighborListOf(this.grafo, a)) {
-				if(!attori.contains(aa)) {
-					attori.add(aa);
-				}
-			}
-		}
-		Collections.sort(attori);
-		return attori;
-		
-	}
-	
-	public List<Actor> getActorGG(){
-		
-		List <Actor> list = new ArrayList<>();
-		for(Actor a : this.grafo.vertexSet()) {
-			list.add(a);
-		}
-		Collections.sort(list);
-		return list;
-	}
-	
-	public String simula(int giorni) {
-		
-		Simulatore sim = new Simulatore(this.grafo,giorni);
+		Simulatore sim = new Simulatore(this.grafo, n,this.getAttori());
+		intervistati = new ArrayList<>();
 		sim.init();
-		sim.processEvent();
-		return sim.getRis();
+		sim.run();
+		this.nPause = sim.nPause;
 		
+		for(Actor a : sim.intervistati) {
+			this.intervistati.add(a);
+		}
+	
 	}
 	
+	
+	public List<Actor> getAttori(){
+		List<Actor> lista = new ArrayList<>();
+		for(Actor a :this.grafo.vertexSet())
+			lista.add(a);
+		Collections.sort(lista);
+		return lista;
+	}
+	
+	public List<Actor> getSimili(Actor a){
+		
+		List<Actor> simili = new ArrayList<>();
+		ConnectivityInspector<Actor, DefaultWeightedEdge> ci = new ConnectivityInspector<>(this.grafo);
+		simili.addAll(ci.connectedSetOf(a));
+		Collections.sort(simili);
+		return simili;
+	}
 	
 	public String getVertici() {
-		return " #VERTICI : "+this.grafo.vertexSet().size();
+		return "#VERTICI : "+this.grafo.vertexSet().size()+"\n";
+	}
+		
+	public String getEdge() {
+		return "#ARCHI : "+this.grafo.edgeSet().size()+"\n";
 	}
 	
-	public String getArchi() {
-		return " #ARCHI : "+this.grafo.edgeSet().size();
+	
+	public List<String> listAllGenere(){
+		return this.dao.listAllGenere();
 	}
 	
-	public void setMap() {
-		
-		for(Movie m: dao.listAllMovies()) {
-			idMapMovie.put(m.getId(), m);
-		}
-		
-		for(Actor a : dao.listAllActors()) {
-			idMapActor.put(a.getId(), a);
+	public void setMappe() {
+		mappaActor= new HashMap<>();
+		for(Actor a : this.dao.listAllActors()) {
+			mappaActor.put(a.getId(), a);
 		}
 		
 	}
-
+	
 }

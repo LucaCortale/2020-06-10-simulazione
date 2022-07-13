@@ -49,36 +49,55 @@ public class FXMLController {
 
     @FXML
     void doAttoriSimili(ActionEvent event) {
-    	Actor actor = boxAttore.getValue();
     	
-    	txtResult.appendText(""+this.model.attoriSimili(actor));
-
+    	txtResult.clear();
+    	
+    	Actor a = boxAttore.getValue();
+    	if(a == null) {
+       		txtResult.appendText("Seleziona una canzone!");
+     		return ;
+    	    }
+    	txtResult.appendText(""+this.model.getSimili(a));
+    	
     }
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
     	
-    	this.model.setMap();
-    	
-    	String genere =  boxGenere.getValue();
-
-    	
-    	this.model.creaGrafo(genere);
-    	
-    	for(Actor a : this.model.getActorGG()) {
-    		boxAttore.getItems().add(a);
+    	txtResult.clear();
+    	String c = this.boxGenere.getValue();
+    	if(c == null) {
+    		txtResult.appendText("Seleziona una canzone!");
+    		return ;
     	}
     	
-    	txtResult.appendText(""+this.model.getVertici()+"\n");
-    	txtResult.appendText(""+this.model.getArchi()+"\n");
+    	this.model.creaGrafo(c);
+    	txtResult.appendText(this.model.getVertici());
+    	txtResult.appendText(this.model.getEdge());
+    	
+    	boxAttore.getItems().addAll(this.model.getAttori());
+    	
     }
 
     @FXML
     void doSimulazione(ActionEvent event) {
+    	
     	txtResult.clear();
-    	int giorni=Integer.parseInt(txtGiorni.getText());
-    	txtResult.setText(""+this.model.simula(giorni));
-
+    	
+    	int m;
+    	try {
+    		m = Integer.parseInt(txtGiorni.getText());
+    	}catch (NumberFormatException e) {
+    		txtResult.appendText("Inseririci un valore numerico per la memoria");
+    		return ;
+    	}
+    	
+    	this.model.simula(m);
+    	for(Actor a : this.model.intervistati)
+    		txtResult.appendText(a+"\n");
+    	
+    	txtResult.appendText(""+this.model.nPause);
+    	
     }
 
     @FXML // This method is called by the FXMLLoader when initialization is complete
@@ -95,9 +114,7 @@ public class FXMLController {
     
     public void setModel(Model model) {
     	this.model = model;
-    	
-    	for(String s :this.model.getGeneriBOX()) {
-    		boxGenere.getItems().add(s);
-    	}
+    	this.model.setMappe();
+    	boxGenere.getItems().addAll(this.model.listAllGenere());
     }
 }
